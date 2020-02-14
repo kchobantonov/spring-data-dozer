@@ -76,6 +76,18 @@ public class SimpleDozerRepository<T, ID> implements DozerRepositoryImplementati
 					+ entityInformation.getJavaType() + ". Validate annotation " + DozerEntity.class
 					+ " attribute domainClass", e);
 		}
+
+		// validate domain model mappings
+		dozerMapper.getMappingMetadata().getClassMapping(entityInformation.getJavaType(),
+				entityInformation.getAdaptedJavaType());
+		dozerMapper.getMappingMetadata().getClassMapping(entityInformation.getAdaptedJavaType(),
+				entityInformation.getJavaType());
+
+		// validate domain model id fields mappings
+		dozerMapper.getMappingMetadata().getClassMapping(entityInformation.getIdType(),
+				getAdaptedRepositoryInformation().getIdType());
+		dozerMapper.getMappingMetadata().getClassMapping(getAdaptedRepositoryInformation().getIdType(),
+				entityInformation.getIdType());
 	}
 
 	@Override

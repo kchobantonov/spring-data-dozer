@@ -1,8 +1,11 @@
 package org.springframework.data.dozer.repository.support;
 
+import org.springframework.data.dozer.mapping.DozerPersistentEntity;
+import org.springframework.data.mapping.context.MappingContext;
 import org.springframework.lang.Nullable;
 
 public class DozerMetamodelEntityInformation<T, ID> extends DozerEntityInformationSupport<T, ID> {
+	private DozerPersistentEntity<T> persistentEntity;
 
 	/**
 	 * Creates a new {@link DozerMetamodelEntityInformation} for the given domain
@@ -10,9 +13,10 @@ public class DozerMetamodelEntityInformation<T, ID> extends DozerEntityInformati
 	 *
 	 * @param domainClass must not be {@literal null}.
 	 */
-	public DozerMetamodelEntityInformation(Class<T> domainClass) {
+	public DozerMetamodelEntityInformation(Class<T> domainClass, MappingContext<?, ?> mappingContext) {
 
 		super(domainClass);
+		persistentEntity = (DozerPersistentEntity<T>) mappingContext.getPersistentEntity(domainClass);
 	}
 
 	/*
@@ -26,7 +30,7 @@ public class DozerMetamodelEntityInformation<T, ID> extends DozerEntityInformati
 	@Nullable
 	@SuppressWarnings("unchecked")
 	public ID getId(T entity) {
-		return (ID) getEntityInformation(getJavaType()).getId(entity);
+		return (ID) persistentEntity.getIdentifierAccessor(entity).getIdentifier();
 	}
 
 	/*
@@ -37,7 +41,7 @@ public class DozerMetamodelEntityInformation<T, ID> extends DozerEntityInformati
 	@Override
 	@SuppressWarnings("unchecked")
 	public Class<ID> getIdType() {
-		return (Class<ID>) getEntityInformation(getJavaType()).getIdType();
+		return (Class<ID>) persistentEntity.getRequiredIdProperty().getActualType();
 	}
 
 }

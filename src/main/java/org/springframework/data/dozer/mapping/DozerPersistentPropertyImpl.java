@@ -5,6 +5,7 @@ import org.springframework.data.mapping.PersistentEntity;
 import org.springframework.data.mapping.model.AnnotationBasedPersistentProperty;
 import org.springframework.data.mapping.model.Property;
 import org.springframework.data.mapping.model.SimpleTypeHolder;
+import org.springframework.data.util.TypeInformation;
 
 public class DozerPersistentPropertyImpl extends AnnotationBasedPersistentProperty<DozerPersistentProperty>
 		implements DozerPersistentProperty {

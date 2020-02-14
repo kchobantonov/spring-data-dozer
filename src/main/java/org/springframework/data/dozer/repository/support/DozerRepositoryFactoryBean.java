@@ -26,7 +26,8 @@ public class DozerRepositoryFactoryBean<T extends Repository<S, ID>, S, ID>
 	private EntityPathResolver entityPathResolver;
 	private EscapeCharacter escapeCharacter = EscapeCharacter.DEFAULT;
 	private BeanFactory beanFactory;
-
+	private MappingContext<?, ?> mappingContext;
+	
 	private DozerRepositoryFactory dozerRepositoryFactory;
 
 	/**
@@ -49,6 +50,7 @@ public class DozerRepositoryFactoryBean<T extends Repository<S, ID>, S, ID>
 	@Override
 	public void setMappingContext(MappingContext<?, ?> mappingContext) {
 		super.setMappingContext(mappingContext);
+		this.mappingContext = mappingContext;
 	}
 
 	/**
@@ -62,10 +64,10 @@ public class DozerRepositoryFactoryBean<T extends Repository<S, ID>, S, ID>
 	public void setEntityPathResolver(ObjectProvider<EntityPathResolver> resolver) {
 		this.entityPathResolver = resolver.getIfAvailable(() -> SimpleEntityPathResolver.INSTANCE);
 	}
-
+	
 	@Override
 	protected RepositoryFactorySupport createRepositoryFactory() {
-		dozerRepositoryFactory = new DozerRepositoryFactory(dozerMapper, beanFactory);
+		dozerRepositoryFactory = new DozerRepositoryFactory(dozerMapper, beanFactory, mappingContext);
 		dozerRepositoryFactory.setEntityPathResolver(entityPathResolver);
 		dozerRepositoryFactory.setEscapeCharacter(escapeCharacter);
 		return dozerRepositoryFactory;

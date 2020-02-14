@@ -1,6 +1,7 @@
 package org.springframework.data.dozer.repository.support;
 
 import org.springframework.data.domain.Persistable;
+import org.springframework.data.mapping.context.MappingContext;
 import org.springframework.lang.Nullable;
 
 public class DozerPersistableEntityInformation<T extends Persistable<ID>, ID>
@@ -12,8 +13,8 @@ public class DozerPersistableEntityInformation<T extends Persistable<ID>, ID>
 	 *
 	 * @param domainClass must not be {@literal null}.
 	 */
-	public DozerPersistableEntityInformation(Class<T> domainClass) {
-		super(domainClass);
+	public DozerPersistableEntityInformation(Class<T> domainClass, MappingContext<?, ?> mappingContext) {
+		super(domainClass, mappingContext);
 	}
 
 	@Override

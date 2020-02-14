@@ -12,6 +12,7 @@ import java.util.stream.Stream;
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.data.dozer.repository.DozerRepository;
 import org.springframework.data.dozer.repository.query.EscapeCharacter;
+import org.springframework.data.mapping.context.MappingContext;
 import org.springframework.data.querydsl.EntityPathResolver;
 import org.springframework.data.querydsl.QuerydslPredicateExecutor;
 import org.springframework.data.querydsl.SimpleEntityPathResolver;
@@ -32,7 +33,7 @@ import com.github.dozermapper.core.Mapper;
 public class DozerRepositoryFactory extends RepositoryFactorySupport {
 	private final Mapper dozerMapper;
 	private final BeanFactory beanFactory;
-
+	private final MappingContext<?, ?> mappingContext;
 	private EntityPathResolver entityPathResolver;
 	private EscapeCharacter escapeCharacter = EscapeCharacter.DEFAULT;
 
@@ -43,11 +44,12 @@ public class DozerRepositoryFactory extends RepositoryFactorySupport {
 	 * 
 	 * @param dozerMapper must not be {@literal null}
 	 */
-	public DozerRepositoryFactory(Mapper dozerMapper, BeanFactory beanFactory) {
+	public DozerRepositoryFactory(Mapper dozerMapper, BeanFactory beanFactory, MappingContext<?, ?> mappingContext) {
 		this.entityPathResolver = SimpleEntityPathResolver.INSTANCE;
 		this.dozerMapper = dozerMapper;
 		this.beanFactory = beanFactory;
-
+		this.mappingContext = mappingContext;
+		
 		addRepositoryProxyPostProcessor((factory, repositoryInformation) -> {
 
 			if (hasMethodReturningStream(repositoryInformation.getRepositoryInterface())) {
@@ -163,7 +165,7 @@ public class DozerRepositoryFactory extends RepositoryFactorySupport {
 	@SuppressWarnings("unchecked")
 	public <T, ID> DozerEntityInformation<T, ID> getEntityInformation(Class<T> domainClass) {
 
-		return (DozerEntityInformation<T, ID>) DozerEntityInformationSupport.getEntityInformation(domainClass);
+		return (DozerEntityInformation<T, ID>) DozerEntityInformationSupport.getEntityInformation(domainClass, mappingContext);
 	}
 
 	/*
