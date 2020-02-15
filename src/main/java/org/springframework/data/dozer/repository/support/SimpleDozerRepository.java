@@ -77,17 +77,25 @@ public class SimpleDozerRepository<T, ID> implements DozerRepositoryImplementati
 					+ " attribute domainClass", e);
 		}
 
-		// validate domain model mappings
-		dozerMapper.getMappingMetadata().getClassMapping(entityInformation.getJavaType(),
-				entityInformation.getAdaptedJavaType());
-		dozerMapper.getMappingMetadata().getClassMapping(entityInformation.getAdaptedJavaType(),
-				entityInformation.getJavaType());
+		if (!entityInformation.getAdaptedJavaType().isAssignableFrom(entityInformation.getJavaType())) {
+			// validate domain model mappings
+			dozerMapper.getMappingMetadata().getClassMapping(entityInformation.getJavaType(),
+					entityInformation.getAdaptedJavaType());
+		}
+		if (!entityInformation.getJavaType().isAssignableFrom(entityInformation.getAdaptedJavaType())) {
+			dozerMapper.getMappingMetadata().getClassMapping(entityInformation.getAdaptedJavaType(),
+					entityInformation.getJavaType());
+		}
 
 		// validate domain model id fields mappings
-		dozerMapper.getMappingMetadata().getClassMapping(entityInformation.getIdType(),
-				getAdaptedRepositoryInformation().getIdType());
-		dozerMapper.getMappingMetadata().getClassMapping(getAdaptedRepositoryInformation().getIdType(),
-				entityInformation.getIdType());
+		if (!getAdaptedRepositoryInformation().getIdType().isAssignableFrom(entityInformation.getIdType())) {
+			dozerMapper.getMappingMetadata().getClassMapping(entityInformation.getIdType(),
+					getAdaptedRepositoryInformation().getIdType());
+		}
+		if (!entityInformation.getIdType().isAssignableFrom(getAdaptedRepositoryInformation().getIdType())) {
+			dozerMapper.getMappingMetadata().getClassMapping(getAdaptedRepositoryInformation().getIdType(),
+					entityInformation.getIdType());
+		}
 	}
 
 	@Override
