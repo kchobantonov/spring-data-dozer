@@ -44,4 +44,8 @@ public class DozerMetamodelEntityInformation<T, ID> extends DozerEntityInformati
 		return (Class<ID>) persistentEntity.getRequiredIdProperty().getActualType();
 	}
 
+	@Override
+	public DozerPersistentEntity<T> getPersistentEntity() {
+		return persistentEntity;
+	}
 }
