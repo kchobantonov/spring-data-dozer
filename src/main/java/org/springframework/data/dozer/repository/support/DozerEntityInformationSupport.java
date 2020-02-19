@@ -29,7 +29,8 @@ public abstract class DozerEntityInformationSupport<T, ID> extends AbstractEntit
 	 * @return
 	 */
 	@SuppressWarnings({ "rawtypes", "unchecked" })
-	public static <T> DozerEntityInformation<T, ?> getEntityInformation(Class<T> domainClass, MappingContext<?, ?> mappingContext) {
+	public static <T> DozerEntityInformation<T, ?> getEntityInformation(Class<T> domainClass,
+			MappingContext<?, ?> mappingContext) {
 
 		Assert.notNull(domainClass, "Domain class must not be null!");
 
@@ -43,5 +44,10 @@ public abstract class DozerEntityInformationSupport<T, ID> extends AbstractEntit
 	@Override
 	public Class<?> getAdaptedJavaType() {
 		return metadata.getAdaptedJavaType();
+	}
+
+	@Override
+	public String getDozerMapId() {
+		return metadata.getDozerMapId();
 	}
 }

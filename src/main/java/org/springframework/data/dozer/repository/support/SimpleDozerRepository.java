@@ -15,6 +15,7 @@ import org.springframework.data.repository.core.RepositoryInformation;
 import org.springframework.data.repository.support.Repositories;
 import org.springframework.data.util.Lazy;
 import org.springframework.util.Assert;
+import org.springframework.util.StringUtils;
 
 import com.github.dozermapper.core.Mapper;
 import com.github.dozermapper.core.MappingException;
@@ -93,15 +94,25 @@ public class SimpleDozerRepository<T, ID> implements DozerRepositoryImplementati
 	}
 
 	protected T toDozerEntity(Object source) {
-		return dozerMapper.map(source, entityInformation.getJavaType());
+		if (StringUtils.isEmpty(entityInformation.getDozerMapId())) {
+			return dozerMapper.map(source, entityInformation.getJavaType());
+		}
+		return dozerMapper.map(source, entityInformation.getJavaType(), entityInformation.getDozerMapId());
 	}
 
 	protected <S extends T> Object toAdaptedEntity(S resource) {
-		return dozerMapper.map(resource, entityInformation.getAdaptedJavaType());
+		if (StringUtils.isEmpty(entityInformation.getDozerMapId())) {
+			return dozerMapper.map(resource, entityInformation.getAdaptedJavaType());
+		}
+		return dozerMapper.map(resource, entityInformation.getAdaptedJavaType(), entityInformation.getDozerMapId());
 	}
 
 	protected Object toAdaptedId(ID resourceId) {
-		return dozerMapper.map(resourceId, getAdaptedRepositoryInformation().getIdType());
+		if (StringUtils.isEmpty(entityInformation.getDozerMapId())) {
+			return dozerMapper.map(resourceId, getAdaptedRepositoryInformation().getIdType());
+		}
+		return dozerMapper.map(resourceId, getAdaptedRepositoryInformation().getIdType(),
+				entityInformation.getDozerMapId());
 	}
 
 	@Override

@@ -33,4 +33,10 @@ public class DefaultDozerEntityMetadata<T> implements DozerEntityMetadata<T> {
 		DozerEntity entity = AnnotatedElementUtils.findMergedAnnotation(domainType, DozerEntity.class);
 		return entity.adaptedDomainClass();
 	}
+	
+	@Override
+	public String getDozerMapId() {
+		DozerEntity entity = AnnotatedElementUtils.findMergedAnnotation(domainType, DozerEntity.class);
+		return entity.dozerMapId();
+	}
 }
