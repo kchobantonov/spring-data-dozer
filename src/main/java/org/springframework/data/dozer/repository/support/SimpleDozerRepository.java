@@ -79,25 +79,17 @@ public class SimpleDozerRepository<T, ID> implements DozerRepositoryImplementati
 					+ " attribute domainClass", e);
 		}
 
-		if (!entityInformation.getAdaptedJavaType().isAssignableFrom(entityInformation.getJavaType())) {
-			// validate domain model mappings
-			dozerMapper.getMappingMetadata().getClassMapping(entityInformation.getJavaType(),
-					entityInformation.getAdaptedJavaType());
-		}
-		if (!entityInformation.getJavaType().isAssignableFrom(entityInformation.getAdaptedJavaType())) {
-			dozerMapper.getMappingMetadata().getClassMapping(entityInformation.getAdaptedJavaType(),
-					entityInformation.getJavaType());
-		}
+		// validate domain model mappings
+		dozerMapper.getMappingMetadata().getClassMapping(entityInformation.getJavaType(),
+				entityInformation.getAdaptedJavaType());
+		dozerMapper.getMappingMetadata().getClassMapping(entityInformation.getAdaptedJavaType(),
+				entityInformation.getJavaType());
 
 		// validate domain model id fields mappings
-		if (!getAdaptedRepositoryInformation().getIdType().isAssignableFrom(entityInformation.getIdType())) {
-			dozerMapper.getMappingMetadata().getClassMapping(entityInformation.getIdType(),
-					getAdaptedRepositoryInformation().getIdType());
-		}
-		if (!entityInformation.getIdType().isAssignableFrom(getAdaptedRepositoryInformation().getIdType())) {
-			dozerMapper.getMappingMetadata().getClassMapping(getAdaptedRepositoryInformation().getIdType(),
-					entityInformation.getIdType());
-		}
+		dozerMapper.getMappingMetadata().getClassMapping(entityInformation.getIdType(),
+				getAdaptedRepositoryInformation().getIdType());
+		dozerMapper.getMappingMetadata().getClassMapping(getAdaptedRepositoryInformation().getIdType(),
+				entityInformation.getIdType());
 	}
 
 	protected T toDozerEntity(Object source) {
@@ -154,7 +146,7 @@ public class SimpleDozerRepository<T, ID> implements DozerRepositoryImplementati
 		try {
 			entityId = toAdaptedId(resourceId);
 		} catch (MappingException e) {
-			return Optional.empty();
+			throw new IllegalArgumentException(e);
 		}
 
 		Optional<Object> entity = getAdaptedRepository().findById(entityId);
@@ -168,7 +160,7 @@ public class SimpleDozerRepository<T, ID> implements DozerRepositoryImplementati
 		try {
 			entityId = toAdaptedId(resourceId);
 		} catch (MappingException e) {
-			return false;
+			throw new IllegalArgumentException(e);
 		}
 		return getAdaptedRepository().existsById(entityId);
 	}
