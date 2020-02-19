@@ -32,6 +32,7 @@ import com.github.dozermapper.core.Mapper;
 
 public class DozerRepositoryFactory extends RepositoryFactorySupport {
 	private final Mapper dozerMapper;
+	private final String conversionServiceName;
 	private final BeanFactory beanFactory;
 	private final MappingContext<?, ?> mappingContext;
 	private EntityPathResolver entityPathResolver;
@@ -44,12 +45,15 @@ public class DozerRepositoryFactory extends RepositoryFactorySupport {
 	 * 
 	 * @param dozerMapper must not be {@literal null}
 	 */
-	public DozerRepositoryFactory(Mapper dozerMapper, BeanFactory beanFactory, MappingContext<?, ?> mappingContext) {
-		this.entityPathResolver = SimpleEntityPathResolver.INSTANCE;
+	public DozerRepositoryFactory(Mapper dozerMapper, String conversionServiceName, BeanFactory beanFactory,
+			MappingContext<?, ?> mappingContext) {
+
 		this.dozerMapper = dozerMapper;
+		this.conversionServiceName = conversionServiceName;
+		this.entityPathResolver = SimpleEntityPathResolver.INSTANCE;
 		this.beanFactory = beanFactory;
 		this.mappingContext = mappingContext;
-		
+
 		addRepositoryProxyPostProcessor((factory, repositoryInformation) -> {
 
 			if (hasMethodReturningStream(repositoryInformation.getRepositoryInterface())) {
@@ -93,7 +97,8 @@ public class DozerRepositoryFactory extends RepositoryFactorySupport {
 	@Override
 	protected final DozerRepositoryImplementation<?, ?> getTargetRepository(RepositoryInformation information) {
 
-		DozerRepositoryImplementation<?, ?> repository = getTargetRepository(information, dozerMapper, beanFactory);
+		DozerRepositoryImplementation<?, ?> repository = getTargetRepository(information, dozerMapper,
+				conversionServiceName, beanFactory);
 		repository.setEscapeCharacter(escapeCharacter);
 
 		return repository;
@@ -108,10 +113,11 @@ public class DozerRepositoryFactory extends RepositoryFactorySupport {
 	 * @return
 	 */
 	protected DozerRepositoryImplementation<?, ?> getTargetRepository(RepositoryInformation information,
-			Mapper dozerMapper, BeanFactory beanFactory) {
+			Mapper dozerMapper, String conversionServiceName, BeanFactory beanFactory) {
 
 		DozerEntityInformation<?, Serializable> entityInformation = getEntityInformation(information.getDomainType());
-		Object repository = getTargetRepositoryViaReflection(information, entityInformation, dozerMapper, beanFactory);
+		Object repository = getTargetRepositoryViaReflection(information, entityInformation, dozerMapper,
+				conversionServiceName, beanFactory);
 
 		Assert.isInstanceOf(DozerRepositoryImplementation.class, repository);
 
@@ -165,7 +171,8 @@ public class DozerRepositoryFactory extends RepositoryFactorySupport {
 	@SuppressWarnings("unchecked")
 	public <T, ID> DozerEntityInformation<T, ID> getEntityInformation(Class<T> domainClass) {
 
-		return (DozerEntityInformation<T, ID>) DozerEntityInformationSupport.getEntityInformation(domainClass, mappingContext);
+		return (DozerEntityInformation<T, ID>) DozerEntityInformationSupport.getEntityInformation(domainClass,
+				mappingContext);
 	}
 
 	/*
@@ -185,7 +192,7 @@ public class DozerRepositoryFactory extends RepositoryFactorySupport {
 				&& QuerydslPredicateExecutor.class.isAssignableFrom(metadata.getRepositoryInterface());
 
 		if (isQueryDslRepository) {
-			//TODO:
+			// TODO:
 		}
 
 		return fragments;

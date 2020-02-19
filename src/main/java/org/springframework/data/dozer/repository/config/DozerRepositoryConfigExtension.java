@@ -21,6 +21,7 @@ import org.springframework.data.repository.config.RepositoryConfigurationSource;
 public class DozerRepositoryConfigExtension extends RepositoryConfigurationExtensionSupport {
 	private static final String MAPPING_CONTEXT_BEAN_NAME = "dozerMappingContext";
 	private static final String DEFAULT_DOZER_MAPPER_BEAN_NAME = "dozerMapper";
+	private static final String DEFAULT_CONVERSION_SERVICE_BEAN_NAME = "defaultConversionService";
 	private static final String ESCAPE_CHARACTER_PROPERTY = "escapeCharacter";
 
 	/*
@@ -92,6 +93,9 @@ public class DozerRepositoryConfigExtension extends RepositoryConfigurationExten
 
 		Optional<String> dozerMapperRef = source.getAttribute("dozerMapperRef");
 		builder.addPropertyReference("dozerMapper", dozerMapperRef.orElse(DEFAULT_DOZER_MAPPER_BEAN_NAME));
+		Optional<String> defaultConversionServiceRef = source.getAttribute("defaultConversionServiceRef");
+		builder.addPropertyValue("conversionServiceName",
+				defaultConversionServiceRef.orElse(DEFAULT_CONVERSION_SERVICE_BEAN_NAME));
 		builder.addPropertyValue(ESCAPE_CHARACTER_PROPERTY, getEscapeCharacter(source).orElse('\\'));
 		builder.addPropertyReference("mappingContext", MAPPING_CONTEXT_BEAN_NAME);
 	}

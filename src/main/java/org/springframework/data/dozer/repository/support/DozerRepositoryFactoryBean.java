@@ -4,7 +4,6 @@ import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.ApplicationEvent;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.event.ContextRefreshedEvent;
 import org.springframework.data.dozer.repository.query.EscapeCharacter;
@@ -20,14 +19,15 @@ import org.springframework.util.Assert;
 import com.github.dozermapper.core.Mapper;
 
 public class DozerRepositoryFactoryBean<T extends Repository<S, ID>, S, ID>
-		extends RepositoryFactoryBeanSupport<T, S, ID> implements ApplicationListener {
+		extends RepositoryFactoryBeanSupport<T, S, ID> implements ApplicationListener<ContextRefreshedEvent> {
 
 	private @Nullable Mapper dozerMapper;
+	private String conversionServiceName;
 	private EntityPathResolver entityPathResolver;
 	private EscapeCharacter escapeCharacter = EscapeCharacter.DEFAULT;
 	private BeanFactory beanFactory;
 	private MappingContext<?, ?> mappingContext;
-	
+
 	private DozerRepositoryFactory dozerRepositoryFactory;
 
 	/**
@@ -64,10 +64,11 @@ public class DozerRepositoryFactoryBean<T extends Repository<S, ID>, S, ID>
 	public void setEntityPathResolver(ObjectProvider<EntityPathResolver> resolver) {
 		this.entityPathResolver = resolver.getIfAvailable(() -> SimpleEntityPathResolver.INSTANCE);
 	}
-	
+
 	@Override
 	protected RepositoryFactorySupport createRepositoryFactory() {
-		dozerRepositoryFactory = new DozerRepositoryFactory(dozerMapper, beanFactory, mappingContext);
+		dozerRepositoryFactory = new DozerRepositoryFactory(dozerMapper, conversionServiceName, beanFactory,
+				mappingContext);
 		dozerRepositoryFactory.setEntityPathResolver(entityPathResolver);
 		dozerRepositoryFactory.setEscapeCharacter(escapeCharacter);
 		return dozerRepositoryFactory;
@@ -80,8 +81,8 @@ public class DozerRepositoryFactoryBean<T extends Repository<S, ID>, S, ID>
 	}
 
 	@Override
-	public void onApplicationEvent(ApplicationEvent event) {
-		if (event instanceof ContextRefreshedEvent && dozerRepositoryFactory != null) {
+	public void onApplicationEvent(ContextRefreshedEvent event) {
+		if (dozerRepositoryFactory != null) {
 			dozerRepositoryFactory.validateAfterRefresh();
 		}
 	}
@@ -100,8 +101,11 @@ public class DozerRepositoryFactoryBean<T extends Repository<S, ID>, S, ID>
 	}
 
 	public void setDozerMapper(Mapper dozerMapper) {
-
 		this.dozerMapper = dozerMapper;
+	}
+
+	public void setConversionServiceName(String conversionServiceName) {
+		this.conversionServiceName = conversionServiceName;
 	}
 
 	public void setEscapeCharacter(char escapeCharacter) {

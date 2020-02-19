@@ -50,4 +50,17 @@ public abstract class DozerEntityInformationSupport<T, ID> extends AbstractEntit
 	public String getDozerMapId() {
 		return metadata.getDozerMapId();
 	}
+
+	@Override
+	public boolean getMapEntityUsingConvertionService() {
+		return metadata.getMapEntityUsingConvertionService();
+
+	}
+
+	@Override
+	public boolean getMapEntityIdUsingConvertionService() {
+		return metadata.getMapEntityIdUsingConvertionService();
+
+	}
+
 }

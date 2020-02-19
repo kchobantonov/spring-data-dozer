@@ -20,6 +20,7 @@ public class DefaultDozerEntityMetadata<T> implements DozerEntityMetadata<T> {
 
 	/*
 	 * (non-Javadoc)
+	 * 
 	 * @see org.springframework.data.repository.core.EntityMetadata#getJavaType()
 	 */
 	@Override
@@ -27,16 +28,27 @@ public class DefaultDozerEntityMetadata<T> implements DozerEntityMetadata<T> {
 		return domainType;
 	}
 
-
 	@Override
 	public Class<?> getAdaptedJavaType() {
 		DozerEntity entity = AnnotatedElementUtils.findMergedAnnotation(domainType, DozerEntity.class);
 		return entity.adaptedDomainClass();
 	}
-	
+
 	@Override
 	public String getDozerMapId() {
 		DozerEntity entity = AnnotatedElementUtils.findMergedAnnotation(domainType, DozerEntity.class);
 		return entity.dozerMapId();
+	}
+
+	@Override
+	public boolean getMapEntityUsingConvertionService() {
+		DozerEntity entity = AnnotatedElementUtils.findMergedAnnotation(domainType, DozerEntity.class);
+		return entity.mapEntityUsingConvertionService();
+	}
+
+	@Override
+	public boolean getMapEntityIdUsingConvertionService() {
+		DozerEntity entity = AnnotatedElementUtils.findMergedAnnotation(domainType, DozerEntity.class);
+		return entity.mapEntityIdUsingConvertionService();
 	}
 }

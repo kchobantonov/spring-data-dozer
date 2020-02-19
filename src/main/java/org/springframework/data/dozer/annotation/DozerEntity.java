@@ -7,6 +7,7 @@ import java.lang.annotation.Documented;
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
 
+import org.springframework.core.convert.converter.Converter;
 import org.springframework.data.annotation.Persistent;
 
 @Documented
@@ -36,4 +37,25 @@ public @interface DozerEntity {
 	 * @return
 	 */
 	String dozerMapId() default "";
+
+	/**
+	 * Should we use spring conversion service for mapping when there is no explicit
+	 * dozer mapping. The spring {@link Converter} should exist if this is true and
+	 * no explicit dozer mapping exist.
+	 * 
+	 * @return true to use the conversion service when no explicit dozer mapping.
+	 *         Either explicit dozer mapping or {@link Converter} must exist.
+	 */
+	boolean mapEntityUsingConvertionService() default false;
+
+	/**
+	 * Should we use the spring conversion service for mapping when there is no
+	 * explicit dozer mapping. The spring {@link Converter} should exist if this is
+	 * true and no explicit dozer mapping exist.
+	 * 
+	 * @return true to use the conversion service when no explicit dozer mapping.
+	 *         Either explicit dozer mapping or {@link Converter} must exist.
+	 */
+	boolean mapEntityIdUsingConvertionService() default true;
+
 }
