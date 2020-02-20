@@ -61,8 +61,9 @@ public class DozerRepositoryQuery implements RepositoryQuery {
 			Collection<Object> target = createCollectionFor(collection);
 
 			for (Object columns : collection) {
-				target.add(method.getEntityInformation().getAdaptedJavaType().isInstance(columns) ? columns
-						: toDozerEntity(columns));
+				target.add(
+						method.getEntityInformation().getAdaptedJavaType().isInstance(columns) ? toDozerEntity(columns)
+								: columns);
 			}
 
 			return target;
