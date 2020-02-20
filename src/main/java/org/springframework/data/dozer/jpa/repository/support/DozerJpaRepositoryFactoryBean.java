@@ -1,7 +1,11 @@
-package org.springframework.data.dozer.repository.support;
+package org.springframework.data.dozer.jpa.repository.support;
+
+import javax.persistence.EntityManager;
+import javax.persistence.PersistenceContext;
 
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.BeanFactory;
+import org.springframework.beans.factory.BeanFactoryAware;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationListener;
@@ -11,16 +15,18 @@ import org.springframework.data.mapping.context.MappingContext;
 import org.springframework.data.querydsl.EntityPathResolver;
 import org.springframework.data.querydsl.SimpleEntityPathResolver;
 import org.springframework.data.repository.Repository;
-import org.springframework.data.repository.core.support.RepositoryFactoryBeanSupport;
 import org.springframework.data.repository.core.support.RepositoryFactorySupport;
+import org.springframework.data.repository.core.support.TransactionalRepositoryFactoryBeanSupport;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 
 import com.github.dozermapper.core.Mapper;
 
-public class DozerRepositoryFactoryBean<T extends Repository<S, ID>, S, ID>
-		extends RepositoryFactoryBeanSupport<T, S, ID> implements ApplicationListener<ContextRefreshedEvent> {
+public class DozerJpaRepositoryFactoryBean<T extends Repository<S, ID>, S, ID>
+		extends TransactionalRepositoryFactoryBeanSupport<T, S, ID>
+		implements BeanFactoryAware, ApplicationListener<ContextRefreshedEvent> {
 
+	private @Nullable EntityManager entityManager;
 	protected @Nullable Mapper dozerMapper;
 	protected String conversionServiceName;
 	protected EntityPathResolver entityPathResolver;
@@ -28,16 +34,26 @@ public class DozerRepositoryFactoryBean<T extends Repository<S, ID>, S, ID>
 	protected BeanFactory beanFactory;
 	protected MappingContext<?, ?> mappingContext;
 
-	private DozerRepositoryFactory dozerRepositoryFactory;
+	private DozerJpaRepositoryFactory dozerRepositoryFactory;
 
 	/**
-	 * Creates a new {@link DozerRepositoryFactoryBean} for the given repository
+	 * Creates a new {@link DozerJpaRepositoryFactoryBean} for the given repository
 	 * interface.
 	 *
 	 * @param repositoryInterface must not be {@literal null}.
 	 */
-	public DozerRepositoryFactoryBean(Class<? extends T> repositoryInterface) {
+	public DozerJpaRepositoryFactoryBean(Class<? extends T> repositoryInterface) {
 		super(repositoryInterface);
+	}
+	
+	/**
+	 * The {@link EntityManager} to be used.
+	 *
+	 * @param entityManager the entityManager to set
+	 */
+	@PersistenceContext
+	public void setEntityManager(EntityManager entityManager) {
+		this.entityManager = entityManager;
 	}
 
 	/*
@@ -65,18 +81,6 @@ public class DozerRepositoryFactoryBean<T extends Repository<S, ID>, S, ID>
 		this.entityPathResolver = resolver.getIfAvailable(() -> SimpleEntityPathResolver.INSTANCE);
 	}
 
-	protected DozerRepositoryFactory doCreateRepositoryFactory() {
-		return new DozerRepositoryFactory(dozerMapper, conversionServiceName, beanFactory, mappingContext);
-	}
-
-	@Override
-	protected final RepositoryFactorySupport createRepositoryFactory() {
-		dozerRepositoryFactory = doCreateRepositoryFactory();
-		dozerRepositoryFactory.setEntityPathResolver(entityPathResolver);
-		dozerRepositoryFactory.setEscapeCharacter(escapeCharacter);
-		return dozerRepositoryFactory;
-	}
-
 	@Override
 	public void setBeanFactory(BeanFactory beanFactory) throws BeansException {
 		super.setBeanFactory(beanFactory);
@@ -90,6 +94,16 @@ public class DozerRepositoryFactoryBean<T extends Repository<S, ID>, S, ID>
 		}
 	}
 
+	@Override
+	protected RepositoryFactorySupport doCreateRepositoryFactory() {
+		DozerJpaRepositoryFactory dozerJpaRepositoryFactory = new DozerJpaRepositoryFactory(entityManager, dozerMapper,
+				conversionServiceName, beanFactory, mappingContext);
+		dozerJpaRepositoryFactory.setEntityPathResolver(entityPathResolver);
+		dozerJpaRepositoryFactory.setEscapeCharacter(escapeCharacter);
+
+		return dozerJpaRepositoryFactory;
+	}
+
 	/*
 	 * (non-Javadoc)
 	 * 
@@ -98,6 +112,7 @@ public class DozerRepositoryFactoryBean<T extends Repository<S, ID>, S, ID>
 	@Override
 	public void afterPropertiesSet() {
 
+		Assert.state(entityManager != null, "EntityManager must not be null!");
 		Assert.state(dozerMapper != null, "Mapper must not be null!");
 
 		super.afterPropertiesSet();

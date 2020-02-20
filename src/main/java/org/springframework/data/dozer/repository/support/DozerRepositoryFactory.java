@@ -31,12 +31,12 @@ import org.springframework.util.ReflectionUtils;
 import com.github.dozermapper.core.Mapper;
 
 public class DozerRepositoryFactory extends RepositoryFactorySupport {
-	private final Mapper dozerMapper;
-	private final String conversionServiceName;
-	private final BeanFactory beanFactory;
-	private final MappingContext<?, ?> mappingContext;
-	private EntityPathResolver entityPathResolver;
-	private EscapeCharacter escapeCharacter = EscapeCharacter.DEFAULT;
+	protected final Mapper dozerMapper;
+	protected final String conversionServiceName;
+	protected final BeanFactory beanFactory;
+	protected final MappingContext<?, ?> mappingContext;
+	protected EntityPathResolver entityPathResolver;
+	protected EscapeCharacter escapeCharacter = EscapeCharacter.DEFAULT;
 
 	private List<DozerRepositoryImplementation> repositoriesToValidateAfterRefresh = new ArrayList<DozerRepositoryImplementation>();
 
@@ -152,12 +152,12 @@ public class DozerRepositoryFactory extends RepositoryFactorySupport {
 	@Override
 	protected Optional<QueryLookupStrategy> getQueryLookupStrategy(@Nullable Key key,
 			QueryMethodEvaluationContextProvider evaluationContextProvider) {
-		/*
-		 * return Optional .of(DozerQueryLookupStrategy.create(entityManager, key,
-		 * extractor, evaluationContextProvider, escapeCharacter));
-		 */
 
-		return Optional.<QueryLookupStrategy>empty();
+		//return Optional.of(DozerQueryLookupStrategy.create(entityManager, key, extractor, evaluationContextProvider,
+		//		escapeCharacter));
+		
+		return Optional.empty();
+
 	}
 
 	/*
