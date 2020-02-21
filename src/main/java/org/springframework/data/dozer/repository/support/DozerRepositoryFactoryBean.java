@@ -86,7 +86,7 @@ public class DozerRepositoryFactoryBean<T extends Repository<S, ID>, S, ID>
 	@Override
 	public void onApplicationEvent(ContextRefreshedEvent event) {
 		if (dozerRepositoryFactory != null) {
-			dozerRepositoryFactory.validateAfterRefresh();
+			dozerRepositoryFactory.validateAfterRefresh(event.getApplicationContext());
 		}
 	}
 

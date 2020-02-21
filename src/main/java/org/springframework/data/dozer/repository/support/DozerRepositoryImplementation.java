@@ -2,6 +2,7 @@ package org.springframework.data.dozer.repository.support;
 
 import org.springframework.data.dozer.repository.DozerRepository;
 import org.springframework.data.dozer.repository.query.EscapeCharacter;
+import org.springframework.data.mapping.context.PersistentEntities;
 import org.springframework.data.repository.NoRepositoryBean;
 
 @NoRepositoryBean
@@ -16,5 +17,5 @@ public interface DozerRepositoryImplementation<T, ID>
 
 	}
 	
-	void validateAfterRefresh();
+	void validateAfterRefresh(PersistentEntities persistentEntities);
 }

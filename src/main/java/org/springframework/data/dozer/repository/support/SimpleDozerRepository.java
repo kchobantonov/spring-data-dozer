@@ -1,17 +1,21 @@
 package org.springframework.data.dozer.repository.support;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.util.Iterator;
 import java.util.NoSuchElementException;
 import java.util.Optional;
 
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.ListableBeanFactory;
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.config.BeanPostProcessor;
 import org.springframework.core.convert.ConversionService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.dozer.annotation.DozerEntity;
+import org.springframework.data.mapping.PersistentEntity;
+import org.springframework.data.mapping.context.PersistentEntities;
 import org.springframework.data.repository.PagingAndSortingRepository;
 import org.springframework.data.repository.core.RepositoryInformation;
 import org.springframework.data.repository.support.Repositories;
@@ -28,6 +32,7 @@ import com.google.common.collect.Iterables;
 public class SimpleDozerRepository<T, ID> implements DozerRepositoryImplementation<T, ID>, BeanPostProcessor {
 
 	protected final DozerEntityInformation<T, ?> entityInformation;
+	protected PersistentEntity<?, ?> adaptedPersistentEntity;
 	protected final Mapper dozerMapper;
 	protected final ListableBeanFactory beanFactory;
 
@@ -38,6 +43,8 @@ public class SimpleDozerRepository<T, ID> implements DozerRepositoryImplementati
 	private boolean useConverterServiceForEntityToAdaptedEntity = false;
 	private boolean useConverterServiceForAdaptedEntityToEntity = false;
 	private boolean useConverterServiceForEntityIdToAdaptedEntityId = false;
+	private boolean useConverterServiceForAdaptedEntityIdToEntityId = false;
+	private Method entityIdSetter;
 
 	public SimpleDozerRepository(DozerEntityInformation<T, ?> entityInformation, Mapper dozerMapper,
 			String conversionServiceName, BeanFactory beanFactory) {
@@ -71,7 +78,7 @@ public class SimpleDozerRepository<T, ID> implements DozerRepositoryImplementati
 	}
 
 	@Override
-	public void validateAfterRefresh() {
+	public void validateAfterRefresh(PersistentEntities persistentEntities) {
 		try {
 			getAdaptedRepositoryInformation();
 		} catch (NoSuchElementException e) {
@@ -89,6 +96,9 @@ public class SimpleDozerRepository<T, ID> implements DozerRepositoryImplementati
 					+ entityInformation.getJavaType() + ". Validate annotation " + DozerEntity.class
 					+ " attribute domainClass", e);
 		}
+
+		adaptedPersistentEntity = persistentEntities
+				.getRequiredPersistentEntity(entityInformation.getAdaptedJavaType());
 
 		boolean considerConversionServiceForEntityMapping = entityInformation.getMapEntityUsingConvertionService()
 				&& conversionService.getOptional().isPresent();
@@ -130,6 +140,19 @@ public class SimpleDozerRepository<T, ID> implements DozerRepositoryImplementati
 			useConverterServiceForEntityIdToAdaptedEntityId = true;
 		}
 
+		try {
+			dozerMapper.getMappingMetadata().getClassMapping(getAdaptedRepositoryInformation().getIdType(),
+					entityInformation.getIdType());
+		} catch (MetadataLookupException e) {
+			if (!considerConversionServiceForEntityIdMapping || !conversionService.getOptional().get()
+					.canConvert(getAdaptedRepositoryInformation().getIdType(), entityInformation.getIdType())) {
+				throw e;
+			}
+			useConverterServiceForAdaptedEntityIdToEntityId = true;
+		}
+
+		entityIdSetter = entityInformation.getPersistentEntity().getRequiredIdProperty().getRequiredSetter();
+
 	}
 
 	protected T toDozerEntity(Object source) {
@@ -167,6 +190,17 @@ public class SimpleDozerRepository<T, ID> implements DozerRepositoryImplementati
 				entityInformation.getDozerMapId());
 	}
 
+	protected Object toResourceId(Object sourceId) {
+		if (useConverterServiceForAdaptedEntityIdToEntityId) {
+			return conversionService.getOptional().get().convert(sourceId, entityInformation.getIdType());
+		}
+
+		if (StringUtils.isEmpty(entityInformation.getDozerMapId())) {
+			return dozerMapper.map(sourceId, entityInformation.getIdType());
+		}
+		return dozerMapper.map(sourceId, entityInformation.getIdType(), entityInformation.getDozerMapId());
+	}
+
 	@Override
 	public Iterable<T> findAll(Sort sort) {
 		Iterable<?> entities = getAdaptedRepository().findAll(sort);
@@ -189,7 +223,13 @@ public class SimpleDozerRepository<T, ID> implements DozerRepositoryImplementati
 	public <S extends T> S save(S resource) {
 		Object entity = toAdaptedEntity(resource);
 
-		getAdaptedRepository().save(entity);
+		entity = getAdaptedRepository().save(entity);
+		Object entityId = adaptedPersistentEntity.getIdentifierAccessor(entity).getRequiredIdentifier();
+		try {
+			entityIdSetter.invoke(resource, toResourceId(entityId));
+		} catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
+			throw new MappingException(e);
+		}
 
 		return resource;
 	}
@@ -198,8 +238,21 @@ public class SimpleDozerRepository<T, ID> implements DozerRepositoryImplementati
 	public <S extends T> Iterable<S> saveAll(Iterable<S> resources) {
 		Iterable<?> entities = Iterables.transform(resources, source -> toAdaptedEntity(source));
 
-		getAdaptedRepository().saveAll(entities);
+		entities = getAdaptedRepository().saveAll(entities);
 
+		Iterator<S> resourceIterator = resources.iterator();
+		for (Iterator<?> entityIterator = entities.iterator(); entityIterator.hasNext()
+				&& resourceIterator.hasNext();) {
+			Object entity = entityIterator.next();
+			S resource = resourceIterator.next();
+
+			Object entityId = adaptedPersistentEntity.getIdentifierAccessor(entity).getRequiredIdentifier();
+			try {
+				entityIdSetter.invoke(resource, toResourceId(entityId));
+			} catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
+				throw new MappingException(e);
+			}
+		}
 		return resources;
 	}
 

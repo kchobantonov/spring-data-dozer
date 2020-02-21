@@ -10,9 +10,12 @@ import java.util.Optional;
 import java.util.stream.Stream;
 
 import org.springframework.beans.factory.BeanFactory;
+import org.springframework.beans.factory.BeanFactoryUtils;
+import org.springframework.context.ApplicationContext;
 import org.springframework.data.dozer.repository.DozerRepository;
 import org.springframework.data.dozer.repository.query.EscapeCharacter;
 import org.springframework.data.mapping.context.MappingContext;
+import org.springframework.data.mapping.context.PersistentEntities;
 import org.springframework.data.querydsl.EntityPathResolver;
 import org.springframework.data.querydsl.QuerydslPredicateExecutor;
 import org.springframework.data.querydsl.SimpleEntityPathResolver;
@@ -153,9 +156,10 @@ public class DozerRepositoryFactory extends RepositoryFactorySupport {
 	protected Optional<QueryLookupStrategy> getQueryLookupStrategy(@Nullable Key key,
 			QueryMethodEvaluationContextProvider evaluationContextProvider) {
 
-		//return Optional.of(DozerQueryLookupStrategy.create(entityManager, key, extractor, evaluationContextProvider,
-		//		escapeCharacter));
-		
+		// return Optional.of(DozerQueryLookupStrategy.create(entityManager, key,
+		// extractor, evaluationContextProvider,
+		// escapeCharacter));
+
 		return Optional.empty();
 
 	}
@@ -211,9 +215,18 @@ public class DozerRepositoryFactory extends RepositoryFactorySupport {
 		return false;
 	}
 
-	public void validateAfterRefresh() {
+	public void validateAfterRefresh(ApplicationContext applicationContext) {
+		List<MappingContext<?, ?>> arrayList = new ArrayList<MappingContext<?, ?>>();
+
+		for (MappingContext<?, ?> context : BeanFactoryUtils
+				.beansOfTypeIncludingAncestors(applicationContext, MappingContext.class).values()) {
+			arrayList.add(context);
+		}
+
+		PersistentEntities persistenceEntites = new PersistentEntities(arrayList);
+
 		for (DozerRepositoryImplementation<?, ?> repo : repositoriesToValidateAfterRefresh) {
-			repo.validateAfterRefresh();
+			repo.validateAfterRefresh(persistenceEntites);
 		}
 
 		repositoriesToValidateAfterRefresh.clear();
