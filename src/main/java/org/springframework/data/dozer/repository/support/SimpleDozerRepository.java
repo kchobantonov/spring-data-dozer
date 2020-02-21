@@ -1,8 +1,10 @@
 package org.springframework.data.dozer.repository.support;
 
+import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.Iterator;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
 
@@ -21,6 +23,7 @@ import org.springframework.data.repository.core.RepositoryInformation;
 import org.springframework.data.repository.support.Repositories;
 import org.springframework.data.util.Lazy;
 import org.springframework.util.Assert;
+import org.springframework.util.ReflectionUtils;
 import org.springframework.util.StringUtils;
 
 import com.github.dozermapper.core.Mapper;
@@ -221,9 +224,37 @@ public class SimpleDozerRepository<T, ID> implements DozerRepositoryImplementati
 
 	@Override
 	public <S extends T> S save(S resource) {
-		Object entity = toAdaptedEntity(resource);
+
+		Object entity = null;
+
+		if (entityInformation.isNew(resource)) {
+			entity = toAdaptedEntity(resource);
+		} else {
+			// do merge
+			Object entityId;
+			try {
+				entityId = toAdaptedId((ID) entityInformation.getRequiredId(resource));
+			} catch (MappingException e) {
+				throw new IllegalArgumentException(e);
+			}
+
+			Optional<?> persistedEntity = getAdaptedRepository().findById(entityId);
+			// Optional<T> persistedResource = persistedEntity.map(source ->
+			// toDozerEntity(source));
+
+			if (persistedEntity.isPresent()) {
+				entity = persistedEntity.get();
+				dozerMapper.map(resource, entity);
+				// resource = (S) persistedResource.get();
+			} else {
+				entity = toAdaptedEntity(resource);
+			}
+
+		}
 
 		entity = getAdaptedRepository().save(entity);
+
+		// apply id
 		Object entityId = adaptedPersistentEntity.getIdentifierAccessor(entity).getRequiredIdentifier();
 		try {
 			entityIdSetter.invoke(resource, toResourceId(entityId));
@@ -231,29 +262,35 @@ public class SimpleDozerRepository<T, ID> implements DozerRepositoryImplementati
 			throw new MappingException(e);
 		}
 
+		// apply version
+		if (entityInformation.getPersistentEntity().hasVersionProperty()
+				&& adaptedPersistentEntity.hasVersionProperty()) {
+
+			Field adaptedVersionField = adaptedPersistentEntity.getRequiredVersionProperty().getRequiredField();
+			ReflectionUtils.makeAccessible(adaptedVersionField);
+			Object entityVersion = ReflectionUtils.getField(adaptedVersionField, entity);
+
+			Field versionField = entityInformation.getPersistentEntity().getRequiredVersionProperty()
+					.getRequiredField();
+			ReflectionUtils.makeAccessible(versionField);
+			ReflectionUtils.setField(versionField, resource,
+					conversionService.getOptional().get().convert(entityVersion, versionField.getType()));
+		}
+
 		return resource;
 	}
 
 	@Override
 	public <S extends T> Iterable<S> saveAll(Iterable<S> resources) {
-		Iterable<?> entities = Iterables.transform(resources, source -> toAdaptedEntity(source));
+		Assert.notNull(resources, "Entities must not be null!");
 
-		entities = getAdaptedRepository().saveAll(entities);
+		List<S> result = new ArrayList<S>();
 
-		Iterator<S> resourceIterator = resources.iterator();
-		for (Iterator<?> entityIterator = entities.iterator(); entityIterator.hasNext()
-				&& resourceIterator.hasNext();) {
-			Object entity = entityIterator.next();
-			S resource = resourceIterator.next();
-
-			Object entityId = adaptedPersistentEntity.getIdentifierAccessor(entity).getRequiredIdentifier();
-			try {
-				entityIdSetter.invoke(resource, toResourceId(entityId));
-			} catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
-				throw new MappingException(e);
-			}
+		for (S entity : resources) {
+			result.add(save(entity));
 		}
-		return resources;
+
+		return result;
 	}
 
 	@Override
