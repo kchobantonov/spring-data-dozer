@@ -169,6 +169,13 @@ public class SimpleDozerRepository<T, ID> implements DozerRepositoryImplementati
 		return dozerMapper.map(source, entityInformation.getJavaType(), entityInformation.getDozerMapId());
 	}
 
+	/**
+	 * Invoked when we need to map the resource to newly created adapted entity
+	 * 
+	 * @param <S>
+	 * @param resource
+	 * @return
+	 */
 	protected <S extends T> Object toAdaptedEntity(S resource) {
 		if (useConverterServiceForEntityToAdaptedEntity) {
 			return conversionService.getOptional().get().convert(resource, entityInformation.getAdaptedJavaType());
@@ -178,6 +185,23 @@ public class SimpleDozerRepository<T, ID> implements DozerRepositoryImplementati
 			return dozerMapper.map(resource, entityInformation.getAdaptedJavaType());
 		}
 		return dozerMapper.map(resource, entityInformation.getAdaptedJavaType(), entityInformation.getDozerMapId());
+	}
+
+	/**
+	 * Invoked when we need to map the resource data to an existing adapted entity
+	 * 
+	 * @param <S>
+	 * @param resource
+	 * @param entity
+	 * @return
+	 */
+	protected <S extends T> S toAdaptedEntity(S resource, Object entity) {
+		if (StringUtils.isEmpty(entityInformation.getDozerMapId())) {
+			dozerMapper.map(resource, entity);
+		} else {
+			dozerMapper.map(resource, entity, entityInformation.getDozerMapId());
+		}
+		return resource;
 	}
 
 	protected Object toAdaptedId(ID resourceId) {
@@ -266,13 +290,9 @@ public class SimpleDozerRepository<T, ID> implements DozerRepositoryImplementati
 			}
 
 			Optional<?> persistedEntity = getAdaptedRepository().findById(entityId);
-			// Optional<T> persistedResource = persistedEntity.map(source ->
-			// toDozerEntity(source));
-
 			if (persistedEntity.isPresent()) {
 				entity = persistedEntity.get();
-				dozerMapper.map(resource, entity);
-				// resource = (S) persistedResource.get();
+				entity = toAdaptedEntity(resource, entity);
 			} else {
 				entity = toAdaptedEntity(resource);
 			}
