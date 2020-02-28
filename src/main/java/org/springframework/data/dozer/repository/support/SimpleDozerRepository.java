@@ -39,15 +39,15 @@ public class SimpleDozerRepository<T, ID> implements DozerRepositoryImplementati
 	protected final Mapper dozerMapper;
 	protected final ListableBeanFactory beanFactory;
 
-	private final Lazy<Optional<RepositoryInformation>> adaptedRepositoryInformation;
-	private final Lazy<Optional<PagingAndSortingRepository<Object, Object>>> adaptedRepository;
-	private final Lazy<ConversionService> conversionService;
+	protected final Lazy<Optional<RepositoryInformation>> adaptedRepositoryInformation;
+	protected final Lazy<Optional<PagingAndSortingRepository<Object, Object>>> adaptedRepository;
+	protected final Lazy<ConversionService> conversionService;
 
-	private boolean useConverterServiceForEntityToAdaptedEntity = false;
-	private boolean useConverterServiceForAdaptedEntityToEntity = false;
-	private boolean useConverterServiceForEntityIdToAdaptedEntityId = false;
-	private boolean useConverterServiceForAdaptedEntityIdToEntityId = false;
-	private Method entityIdSetter;
+	protected boolean useConverterServiceForEntityToAdaptedEntity = false;
+	protected boolean useConverterServiceForAdaptedEntityToEntity = false;
+	protected boolean useConverterServiceForEntityIdToAdaptedEntityId = false;
+	protected boolean useConverterServiceForAdaptedEntityIdToEntityId = false;
+	protected Method entityIdSetter;
 
 	public SimpleDozerRepository(DozerEntityInformation<T, ?> entityInformation, Mapper dozerMapper,
 			String conversionServiceName, BeanFactory beanFactory) {
@@ -204,6 +204,33 @@ public class SimpleDozerRepository<T, ID> implements DozerRepositoryImplementati
 		return dozerMapper.map(sourceId, entityInformation.getIdType(), entityInformation.getDozerMapId());
 	}
 
+	protected <S extends T> S toResource(S resource, Object entity) {
+		// apply id
+		Object entityId = adaptedPersistentEntity.getIdentifierAccessor(entity).getRequiredIdentifier();
+		try {
+			entityIdSetter.invoke(resource, toResourceId(entityId));
+		} catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
+			throw new MappingException(e);
+		}
+
+		// apply version
+		if (entityInformation.getPersistentEntity().hasVersionProperty()
+				&& adaptedPersistentEntity.hasVersionProperty()) {
+
+			Field adaptedVersionField = adaptedPersistentEntity.getRequiredVersionProperty().getRequiredField();
+			ReflectionUtils.makeAccessible(adaptedVersionField);
+			Object entityVersion = ReflectionUtils.getField(adaptedVersionField, entity);
+
+			Field versionField = entityInformation.getPersistentEntity().getRequiredVersionProperty()
+					.getRequiredField();
+			ReflectionUtils.makeAccessible(versionField);
+			ReflectionUtils.setField(versionField, resource,
+					conversionService.getOptional().get().convert(entityVersion, versionField.getType()));
+		}
+
+		return resource;
+	}
+
 	@Override
 	public Iterable<T> findAll(Sort sort) {
 		Iterable<?> entities = getAdaptedRepository().findAll(sort);
@@ -254,30 +281,7 @@ public class SimpleDozerRepository<T, ID> implements DozerRepositoryImplementati
 
 		entity = getAdaptedRepository().save(entity);
 
-		// apply id
-		Object entityId = adaptedPersistentEntity.getIdentifierAccessor(entity).getRequiredIdentifier();
-		try {
-			entityIdSetter.invoke(resource, toResourceId(entityId));
-		} catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
-			throw new MappingException(e);
-		}
-
-		// apply version
-		if (entityInformation.getPersistentEntity().hasVersionProperty()
-				&& adaptedPersistentEntity.hasVersionProperty()) {
-
-			Field adaptedVersionField = adaptedPersistentEntity.getRequiredVersionProperty().getRequiredField();
-			ReflectionUtils.makeAccessible(adaptedVersionField);
-			Object entityVersion = ReflectionUtils.getField(adaptedVersionField, entity);
-
-			Field versionField = entityInformation.getPersistentEntity().getRequiredVersionProperty()
-					.getRequiredField();
-			ReflectionUtils.makeAccessible(versionField);
-			ReflectionUtils.setField(versionField, resource,
-					conversionService.getOptional().get().convert(entityVersion, versionField.getType()));
-		}
-
-		return resource;
+		return toResource(resource, entity);
 	}
 
 	@Override
