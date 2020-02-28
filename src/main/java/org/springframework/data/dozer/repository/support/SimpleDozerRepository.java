@@ -195,13 +195,13 @@ public class SimpleDozerRepository<T, ID> implements DozerRepositoryImplementati
 	 * @param entity
 	 * @return
 	 */
-	protected <S extends T> S toAdaptedEntity(S resource, Object entity) {
+	protected <S extends T> Object toAdaptedEntity(S resource, Object entity) {
 		if (StringUtils.isEmpty(entityInformation.getDozerMapId())) {
 			dozerMapper.map(resource, entity);
 		} else {
 			dozerMapper.map(resource, entity, entityInformation.getDozerMapId());
 		}
-		return resource;
+		return entity;
 	}
 
 	protected Object toAdaptedId(ID resourceId) {
