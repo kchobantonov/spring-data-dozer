@@ -47,6 +47,11 @@ public abstract class DozerEntityInformationSupport<T, ID> extends AbstractEntit
 	}
 
 	@Override
+	public Class<?> getAdaptedRepositoryJavaType() {
+		return metadata.getAdaptedRepositoryJavaType();
+	}
+
+	@Override
 	public String getDozerMapId() {
 		return metadata.getDozerMapId();
 	}

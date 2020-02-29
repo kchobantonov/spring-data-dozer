@@ -13,6 +13,14 @@ public interface DozerEntityMetadata<T> extends EntityMetadata<T> {
 	Class<?> getAdaptedJavaType();
 
 	/**
+	 * Returns the repository interface to be checked in case there are multiple
+	 * repositories for the same adapted java type.
+	 *
+	 * @return
+	 */
+	Class<?> getAdaptedRepositoryJavaType();
+
+	/**
 	 * Dozer mapping context id.
 	 * 
 	 * @return

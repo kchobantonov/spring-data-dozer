@@ -5,8 +5,10 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.ListableBeanFactory;
@@ -20,7 +22,6 @@ import org.springframework.data.mapping.PersistentEntity;
 import org.springframework.data.mapping.context.PersistentEntities;
 import org.springframework.data.repository.PagingAndSortingRepository;
 import org.springframework.data.repository.core.RepositoryInformation;
-import org.springframework.data.repository.support.Repositories;
 import org.springframework.data.util.Lazy;
 import org.springframework.util.Assert;
 import org.springframework.util.ReflectionUtils;
@@ -39,8 +40,13 @@ public class SimpleDozerRepository<T, ID> implements DozerRepositoryImplementati
 	protected final Mapper dozerMapper;
 	protected final ListableBeanFactory beanFactory;
 
-	protected final Lazy<Optional<RepositoryInformation>> adaptedRepositoryInformation;
-	protected final Lazy<Optional<PagingAndSortingRepository<Object, Object>>> adaptedRepository;
+	protected final Lazy<Optional<Map<String, RepositoryInformation>>> adaptedRepositoryInformations;
+	protected final Lazy<Optional<Map<String, Object>>> adaptedRepositories;
+
+	private PagingAndSortingRepository<Object, Object> adaptedRepository;
+	private String adaptedRepositoryName;
+	private RepositoryInformation adaptedRepositoryInformation;
+
 	protected final Lazy<ConversionService> conversionService;
 
 	protected boolean useConverterServiceForEntityToAdaptedEntity = false;
@@ -62,22 +68,76 @@ public class SimpleDozerRepository<T, ID> implements DozerRepositoryImplementati
 		this.conversionService = Lazy
 				.of(() -> this.beanFactory.getBeansOfType(ConversionService.class).get(conversionServiceName));
 
-		this.adaptedRepositoryInformation = Lazy.of(() -> beanFactory.getBeanProvider(Repositories.class)
+		this.adaptedRepositoryInformations = Lazy.of(() -> beanFactory.getBeanProvider(Repositories.class)
 				.getIfAvailable(() -> new Repositories((ListableBeanFactory) beanFactory))
 				.getRepositoryInformationFor(entityInformation.getAdaptedJavaType()));
 
-		this.adaptedRepository = Lazy.of(() -> beanFactory.getBeanProvider(Repositories.class)
+		this.adaptedRepositories = Lazy.of(() -> beanFactory.getBeanProvider(Repositories.class)
 				.getIfAvailable(() -> new Repositories((ListableBeanFactory) beanFactory))
-				.getRepositoryFor(entityInformation.getAdaptedJavaType())
-				.map(r -> (PagingAndSortingRepository<Object, Object>) r));
+				.getRepositoriesFor(entityInformation.getAdaptedJavaType()));
 	}
 
 	protected RepositoryInformation getAdaptedRepositoryInformation() {
-		return adaptedRepositoryInformation.get().get();
+		if (adaptedRepositoryInformation != null) {
+			return adaptedRepositoryInformation;
+		}
+
+		getAdaptedRepository();
+
+		Map<String, RepositoryInformation> informations = adaptedRepositoryInformations.get().get();
+		if (informations.size() > 1) {
+			adaptedRepositoryInformation = Optional.ofNullable(informations.get(adaptedRepositoryName)).get();
+		} else {
+			adaptedRepositoryInformation = informations.values().iterator().next();
+		}
+
+		return adaptedRepositoryInformation;
 	}
 
 	protected PagingAndSortingRepository<Object, Object> getAdaptedRepository() {
-		return adaptedRepository.get().get();
+		if (adaptedRepository != null) {
+			return adaptedRepository;
+		}
+		Map<String, Object> repositories = adaptedRepositories.get().get();
+		Object repo = null;
+		if (repositories.size() > 1) {
+			Assert.isTrue(!void.class.equals(entityInformation.getAdaptedRepositoryJavaType()),
+					"Multiple adapted repositories found for " + entityInformation.getAdaptedJavaType()
+							+ " to support dozer entity " + entityInformation.getJavaType()
+							+ ". Please specify a concrete adapted repository interface using annnotation "
+							+ DozerEntity.class + " attribute adaptedRepositoryClass");
+			
+			List<String> matchesRepositoryNames = repositories.entrySet().stream().filter(
+					it -> entityInformation.getAdaptedRepositoryJavaType().isAssignableFrom(it.getValue().getClass()))
+					.map(it -> it.getKey()).collect(Collectors.toList());
+
+			Assert.isTrue(matchesRepositoryNames.size() > 0,
+					"Unable to find repository information for " + entityInformation.getAdaptedJavaType()
+							+ " and adapter repository class " + entityInformation.getAdaptedRepositoryJavaType()
+							+ " to support dozer entity " + entityInformation.getJavaType() + ". Validate annnotation "
+							+ DozerEntity.class + " attribute adaptedRepositoryClass");
+
+			Assert.isTrue(matchesRepositoryNames.size() == 1,
+					"Unable to find unique repository information for " + entityInformation.getAdaptedJavaType()
+							+ " and adapter repository class " + entityInformation.getAdaptedRepositoryJavaType()
+							+ " to support dozer entity " + entityInformation.getJavaType()
+							+ ". Narrow the repository interface by applying a change in annnotation "
+							+ DozerEntity.class + " attribute adaptedRepositoryClass. Repositories found :"
+							+ matchesRepositoryNames);
+
+			adaptedRepositoryName = matchesRepositoryNames.get(0);
+			repo = repositories.get(adaptedRepositoryName);
+		} else {
+			repo = repositories.values().iterator().next();
+		}
+
+		Assert.isInstanceOf(PagingAndSortingRepository.class, repo,
+				"Unsupported adapted repository for " + entityInformation.getAdaptedJavaType()
+						+ " to support dozer entity " + entityInformation.getJavaType()
+						+ ". Adapted repository have to implement " + PagingAndSortingRepository.class);
+		adaptedRepository = (PagingAndSortingRepository) repo;
+
+		return adaptedRepository;
 	}
 
 	@Override
