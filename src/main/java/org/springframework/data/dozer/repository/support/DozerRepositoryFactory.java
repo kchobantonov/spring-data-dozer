@@ -119,7 +119,7 @@ public class DozerRepositoryFactory extends RepositoryFactorySupport {
 			Mapper dozerMapper, String conversionServiceName, BeanFactory beanFactory) {
 
 		DozerEntityInformation<?, Serializable> entityInformation = getEntityInformation(information.getDomainType());
-		Object repository = getTargetRepositoryViaReflection(information, entityInformation, dozerMapper,
+		Object repository = getTargetRepositoryViaReflection(information, information, entityInformation, dozerMapper,
 				conversionServiceName, beanFactory);
 
 		Assert.isInstanceOf(DozerRepositoryImplementation.class, repository);

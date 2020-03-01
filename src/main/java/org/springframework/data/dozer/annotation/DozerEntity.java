@@ -32,16 +32,6 @@ public @interface DozerEntity {
 	Class<?> adaptedDomainClass();
 
 	/**
-	 * <p>
-	 * The adapted (backing) repository class. This is useful in case of multiple
-	 * repositories for the same domain class. The default is to expect a single
-	 * backing repository per adapted domain class.
-	 * 
-	 * @return the adapted repository class.
-	 */
-	Class<?> adaptedRepositoryClass() default void.class;
-
-	/**
 	 * Dozer mapping context id to be used during mapping.
 	 * 
 	 * @return
