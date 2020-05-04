@@ -31,6 +31,9 @@ import org.springframework.util.StringUtils;
 
 import com.github.dozermapper.core.Mapper;
 import com.github.dozermapper.core.MappingException;
+import com.github.dozermapper.core.classmap.ClassMap;
+import com.github.dozermapper.core.classmap.ClassMappings;
+import com.github.dozermapper.core.classmap.MappingDirection;
 import com.github.dozermapper.core.metadata.MetadataLookupException;
 import com.google.common.base.Predicates;
 import com.google.common.collect.Iterables;
@@ -179,53 +182,78 @@ public class SimpleDozerRepository<T, ID> implements DozerRepositoryImplementati
 				&& conversionService.getOptional().isPresent();
 
 		// validate domain model mappings
-		try {
-			dozerMapper.getMappingMetadata().getClassMapping(entityInformation.getJavaType(),
-					entityInformation.getAdaptedJavaType());
-		} catch (MetadataLookupException e) {
+		if (getClassMap(entityInformation.getJavaType(), entityInformation.getAdaptedJavaType(),
+				entityInformation.getDozerMapId()) == null) {
+
 			if (!considerConversionServiceForEntityMapping || !conversionService.getOptional().get()
 					.canConvert(entityInformation.getJavaType(), entityInformation.getAdaptedJavaType())) {
-				throw e;
+				throw new MetadataLookupException(
+						"No mapping definition found for: " + entityInformation.getJavaType().getName() + " -> "
+								+ entityInformation.getAdaptedJavaType().getName() + ".");
 			}
 			useConverterServiceForEntityToAdaptedEntity = true;
 		}
 
-		try {
-			dozerMapper.getMappingMetadata().getClassMapping(entityInformation.getAdaptedJavaType(),
-					entityInformation.getJavaType());
-		} catch (MetadataLookupException e) {
+		if (getClassMap(entityInformation.getAdaptedJavaType(), entityInformation.getJavaType(),
+				entityInformation.getDozerMapId()) == null) {
+
 			if (!considerConversionServiceForEntityMapping || !conversionService.getOptional().get()
 					.canConvert(entityInformation.getAdaptedJavaType(), entityInformation.getJavaType())) {
-				throw e;
+				throw new MetadataLookupException(
+						"No mapping definition found for: " + entityInformation.getAdaptedJavaType().getName() + " -> "
+								+ entityInformation.getJavaType().getName() + ".");
 			}
 			useConverterServiceForAdaptedEntityToEntity = true;
 		}
 
 		// validate domain model id fields mappings
-		try {
-			dozerMapper.getMappingMetadata().getClassMapping(entityInformation.getIdType(),
-					getAdaptedRepositoryInformation().getIdType());
-		} catch (MetadataLookupException e) {
+		if (getClassMap(entityInformation.getIdType(), getAdaptedRepositoryInformation().getIdType(), null) == null) {
 			if (!considerConversionServiceForEntityIdMapping || !conversionService.getOptional().get()
 					.canConvert(entityInformation.getIdType(), getAdaptedRepositoryInformation().getIdType())) {
-				throw e;
+				throw new MetadataLookupException(
+						"No mapping definition found for: " + entityInformation.getIdType().getName() + " -> "
+								+ getAdaptedRepositoryInformation().getIdType().getName() + ".");
 			}
 			useConverterServiceForEntityIdToAdaptedEntityId = true;
 		}
 
-		try {
-			dozerMapper.getMappingMetadata().getClassMapping(getAdaptedRepositoryInformation().getIdType(),
-					entityInformation.getIdType());
-		} catch (MetadataLookupException e) {
+		if (getClassMap(getAdaptedRepositoryInformation().getIdType(), entityInformation.getIdType(), null) == null) {
 			if (!considerConversionServiceForEntityIdMapping || !conversionService.getOptional().get()
 					.canConvert(getAdaptedRepositoryInformation().getIdType(), entityInformation.getIdType())) {
-				throw e;
+				throw new MetadataLookupException(
+						"No mapping definition found for: " + getAdaptedRepositoryInformation().getIdType().getName()
+								+ " -> " + entityInformation.getIdType().getName() + ".");
 			}
 			useConverterServiceForAdaptedEntityIdToEntityId = true;
 		}
 
 		entityIdSetter = entityInformation.getPersistentEntity().getRequiredIdProperty().getRequiredSetter();
+	}
 
+	private ClassMap getClassMap(Class<?> srcClass, Class<?> destClass, String mapId) {
+		ClassMappings classMappings = getClassMappings();
+
+		ClassMap mapping = classMappings.find(srcClass, destClass, mapId);
+
+		if (mapping == null) {
+			mapping = classMappings.find(destClass, srcClass, mapId);
+			if (mapping != null && MappingDirection.ONE_WAY == mapping.getType()) {
+				return null;
+			} else {
+				return null;
+			}
+		}
+
+		return mapping;
+	}
+
+	private ClassMappings getClassMappings() {
+		Field classMappingsField = ReflectionUtils.findField(dozerMapper.getMappingMetadata().getClass(),
+				"classMappings", ClassMappings.class);
+		ReflectionUtils.makeAccessible(classMappingsField);
+		ClassMappings classMappings = (ClassMappings) ReflectionUtils.getField(classMappingsField,
+				dozerMapper.getMappingMetadata());
+		return classMappings;
 	}
 
 	protected T toDozerEntity(Object source) {
