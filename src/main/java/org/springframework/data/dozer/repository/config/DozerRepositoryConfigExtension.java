@@ -7,7 +7,9 @@ import java.util.Collections;
 import java.util.Locale;
 import java.util.Optional;
 
+import org.springframework.beans.factory.support.AbstractBeanDefinition;
 import org.springframework.beans.factory.support.BeanDefinitionBuilder;
+import org.springframework.beans.factory.support.BeanDefinitionReaderUtils;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import org.springframework.beans.factory.support.RootBeanDefinition;
 import org.springframework.data.dozer.annotation.DozerEntity;
@@ -148,15 +150,13 @@ public class DozerRepositoryConfigExtension extends RepositoryConfigurationExten
 
 		}, registry, DozerEvaluationContextExtension.class.getName(), source);
 
+		BeanDefinitionBuilder builder = BeanDefinitionBuilder.rootBeanDefinition(Repositories.class);
+		AbstractBeanDefinition repositoriesDefinition = builder.getBeanDefinition();
+
 		registerIfNotAlreadyRegistered(() -> {
+			return repositoriesDefinition;
+		}, registry, BeanDefinitionReaderUtils.generateBeanName(repositoriesDefinition, registry, true), source);
 
-			BeanDefinitionBuilder builder = BeanDefinitionBuilder
-					.rootBeanDefinition(Repositories.class);
-
-			return builder.getBeanDefinition();
-
-		}, registry, "dozerRepositories", source);
-	
 	}
 
 }
