@@ -150,12 +150,10 @@ public class DozerRepositoryConfigExtension extends RepositoryConfigurationExten
 
 		}, registry, DozerEvaluationContextExtension.class.getName(), source);
 
-		BeanDefinitionBuilder builder = BeanDefinitionBuilder.rootBeanDefinition(Repositories.class);
-		AbstractBeanDefinition repositoriesDefinition = builder.getBeanDefinition();
-
 		registerIfNotAlreadyRegistered(() -> {
-			return repositoriesDefinition;
-		}, registry, BeanDefinitionReaderUtils.generateBeanName(repositoriesDefinition, registry, true), source);
+			BeanDefinitionBuilder builder = BeanDefinitionBuilder.rootBeanDefinition(Repositories.class);
+			return builder.getBeanDefinition();
+		}, registry, "org.springframework.data.dozer.repository.support.Repositories", source);
 
 	}
 
