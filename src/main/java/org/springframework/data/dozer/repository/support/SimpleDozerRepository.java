@@ -33,6 +33,7 @@ import com.github.dozermapper.core.Mapper;
 import com.github.dozermapper.core.MappingException;
 import com.github.dozermapper.core.classmap.ClassMap;
 import com.github.dozermapper.core.classmap.ClassMappings;
+import com.github.dozermapper.core.classmap.Configuration;
 import com.github.dozermapper.core.classmap.MappingDirection;
 import com.github.dozermapper.core.metadata.MetadataLookupException;
 import com.google.common.base.Predicates;
@@ -48,7 +49,6 @@ public class SimpleDozerRepository<T, ID> implements DozerRepositoryImplementati
 	protected final Lazy<Optional<Map<String, RepositoryInformation>>> adaptedRepositoryInformations;
 	protected final Lazy<Optional<Map<String, Object>>> adaptedRepositories;
 
-	private Class adaptedRepositoryJavaType;
 	private PagingAndSortingRepository<Object, Object> adaptedRepository;
 	private String adaptedRepositoryName;
 	private RepositoryInformation adaptedRepositoryInformation;
@@ -182,8 +182,8 @@ public class SimpleDozerRepository<T, ID> implements DozerRepositoryImplementati
 				&& conversionService.getOptional().isPresent();
 
 		// validate domain model mappings
-		if (getClassMap(entityInformation.getJavaType(), entityInformation.getAdaptedJavaType(),
-				entityInformation.getDozerMapId()) == null) {
+		if (!hasDozerMapping(entityInformation.getJavaType(), entityInformation.getAdaptedJavaType(),
+				entityInformation.getDozerMapId())) {
 
 			if (!considerConversionServiceForEntityMapping || !conversionService.getOptional().get()
 					.canConvert(entityInformation.getJavaType(), entityInformation.getAdaptedJavaType())) {
@@ -194,8 +194,8 @@ public class SimpleDozerRepository<T, ID> implements DozerRepositoryImplementati
 			useConverterServiceForEntityToAdaptedEntity = true;
 		}
 
-		if (getClassMap(entityInformation.getAdaptedJavaType(), entityInformation.getJavaType(),
-				entityInformation.getDozerMapId()) == null) {
+		if (!hasDozerMapping(entityInformation.getAdaptedJavaType(), entityInformation.getJavaType(),
+				entityInformation.getDozerMapId())) {
 
 			if (!considerConversionServiceForEntityMapping || !conversionService.getOptional().get()
 					.canConvert(entityInformation.getAdaptedJavaType(), entityInformation.getJavaType())) {
@@ -207,7 +207,7 @@ public class SimpleDozerRepository<T, ID> implements DozerRepositoryImplementati
 		}
 
 		// validate domain model id fields mappings
-		if (getClassMap(entityInformation.getIdType(), getAdaptedRepositoryInformation().getIdType(), null) == null) {
+		if (!hasDozerMapping(entityInformation.getIdType(), getAdaptedRepositoryInformation().getIdType(), null)) {
 			if (!considerConversionServiceForEntityIdMapping || !conversionService.getOptional().get()
 					.canConvert(entityInformation.getIdType(), getAdaptedRepositoryInformation().getIdType())) {
 				throw new MetadataLookupException(
@@ -217,7 +217,7 @@ public class SimpleDozerRepository<T, ID> implements DozerRepositoryImplementati
 			useConverterServiceForEntityIdToAdaptedEntityId = true;
 		}
 
-		if (getClassMap(getAdaptedRepositoryInformation().getIdType(), entityInformation.getIdType(), null) == null) {
+		if (!hasDozerMapping(getAdaptedRepositoryInformation().getIdType(), entityInformation.getIdType(), null)) {
 			if (!considerConversionServiceForEntityIdMapping || !conversionService.getOptional().get()
 					.canConvert(getAdaptedRepositoryInformation().getIdType(), entityInformation.getIdType())) {
 				throw new MetadataLookupException(
@@ -230,7 +230,33 @@ public class SimpleDozerRepository<T, ID> implements DozerRepositoryImplementati
 		entityIdSetter = entityInformation.getPersistentEntity().getRequiredIdProperty().getRequiredSetter();
 	}
 
-	private ClassMap getClassMap(Class<?> srcClass, Class<?> destClass, String mapId) {
+	/**
+	 * check if dozer can convert object of srcClass to object of destClass
+	 * 
+	 * @param srcClass  the source class
+	 * @param destClass the destination class
+	 * @param mapId     the mapping id to use
+	 * 
+	 * @return true if there is a mapping or converter, false otherwise
+	 */
+	protected boolean hasDozerMapping(Class<?> srcClass, Class<?> destClass, String mapId) {
+		ClassMap classMap = getClassMap(srcClass, destClass, mapId);
+
+		if (classMap != null) {
+			return true;
+		}
+
+		Configuration configuration = getGlobalConfiguration();
+
+		if (configuration.getCustomConverters() != null
+				&& configuration.getCustomConverters().findConverter(srcClass, destClass) != null) {
+			return true;
+		}
+
+		return false;
+	}
+
+	protected ClassMap getClassMap(Class<?> srcClass, Class<?> destClass, String mapId) {
 		ClassMappings classMappings = getClassMappings();
 
 		ClassMap mapping = classMappings.find(srcClass, destClass, mapId);
@@ -247,7 +273,16 @@ public class SimpleDozerRepository<T, ID> implements DozerRepositoryImplementati
 		return mapping;
 	}
 
-	private ClassMappings getClassMappings() {
+	protected Configuration getGlobalConfiguration() {
+		Field globalConfigurationField = ReflectionUtils.findField(dozerMapper.getMapperModelContext().getClass(),
+				"globalConfiguration", Configuration.class);
+		ReflectionUtils.makeAccessible(globalConfigurationField);
+		Configuration globalConfiguration = (Configuration) ReflectionUtils.getField(globalConfigurationField,
+				dozerMapper.getMapperModelContext());
+		return globalConfiguration;
+	}
+
+	protected ClassMappings getClassMappings() {
 		Field classMappingsField = ReflectionUtils.findField(dozerMapper.getMappingMetadata().getClass(),
 				"classMappings", ClassMappings.class);
 		ReflectionUtils.makeAccessible(classMappingsField);
