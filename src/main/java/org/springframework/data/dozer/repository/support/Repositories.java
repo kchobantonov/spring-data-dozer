@@ -10,9 +10,12 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.BeanFactoryUtils;
 import org.springframework.beans.factory.ListableBeanFactory;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.ApplicationContextAware;
 import org.springframework.data.repository.core.RepositoryInformation;
 import org.springframework.data.repository.core.support.RepositoryFactoryInformation;
 import org.springframework.data.util.ProxyUtils;
@@ -26,15 +29,15 @@ import org.springframework.util.ClassUtils;
  * 
  * @author kchobantonov
  */
-public class Repositories implements Iterable<Class<?>> {
+public class Repositories implements Iterable<Class<?>>, ApplicationContextAware {
 
 	static final Repositories NONE = new Repositories();
 
 	private static final String DOMAIN_TYPE_MUST_NOT_BE_NULL = "Domain type must not be null!";
 
-	private final Optional<BeanFactory> beanFactory;
-	private final Map<Class<?>, Set<String>> repositoryBeanNames;
-	private final Map<Class<?>, Map<String, RepositoryFactoryInformation<Object, Object>>> repositoryFactoryInfos;
+	private Optional<BeanFactory> beanFactory;
+	private Map<Class<?>, Set<String>> repositoryBeanNames;
+	private Map<Class<?>, Map<String, RepositoryFactoryInformation<Object, Object>>> repositoryFactoryInfos;
 
 	/**
 	 * Constructor to create the {@link #NONE} instance.
@@ -63,6 +66,15 @@ public class Repositories implements Iterable<Class<?>> {
 		populateRepositoryFactoryInformation(factory);
 	}
 
+	@Override
+	public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
+		this.beanFactory = Optional.of(applicationContext);
+		this.repositoryFactoryInfos = new HashMap<>();
+		this.repositoryBeanNames = new HashMap<>();
+
+		populateRepositoryFactoryInformation(applicationContext);
+	}
+
 	private void populateRepositoryFactoryInformation(ListableBeanFactory factory) {
 
 		for (String name : BeanFactoryUtils.beanNamesForTypeIncludingAncestors(factory,
@@ -88,8 +100,8 @@ public class Repositories implements Iterable<Class<?>> {
 		if (information == null) {
 			return Optional.empty();
 		}
-		return Optional.of(information.entrySet().stream().collect(
-				Collectors.toMap(Map.Entry::getKey, e -> (RepositoryInformation) e.getValue().getRepositoryInformation())));
+		return Optional.of(information.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey,
+				e -> (RepositoryInformation) e.getValue().getRepositoryInformation())));
 	}
 
 	@SuppressWarnings("rawtypes")

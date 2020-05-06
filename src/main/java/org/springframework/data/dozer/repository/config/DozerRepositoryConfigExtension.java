@@ -14,6 +14,7 @@ import org.springframework.data.dozer.annotation.DozerEntity;
 import org.springframework.data.dozer.repository.DozerRepository;
 import org.springframework.data.dozer.repository.support.DozerEvaluationContextExtension;
 import org.springframework.data.dozer.repository.support.DozerRepositoryFactoryBean;
+import org.springframework.data.dozer.repository.support.Repositories;
 import org.springframework.data.repository.config.AnnotationRepositoryConfigurationSource;
 import org.springframework.data.repository.config.RepositoryConfigurationExtensionSupport;
 import org.springframework.data.repository.config.RepositoryConfigurationSource;
@@ -146,6 +147,16 @@ public class DozerRepositoryConfigExtension extends RepositoryConfigurationExten
 			return builder.getBeanDefinition();
 
 		}, registry, DozerEvaluationContextExtension.class.getName(), source);
+
+		registerIfNotAlreadyRegistered(() -> {
+
+			BeanDefinitionBuilder builder = BeanDefinitionBuilder
+					.rootBeanDefinition(Repositories.class);
+
+			return builder.getBeanDefinition();
+
+		}, registry, "dozerRepositories", source);
+	
 	}
 
 }
