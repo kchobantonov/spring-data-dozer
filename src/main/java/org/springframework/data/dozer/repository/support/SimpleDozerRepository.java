@@ -4,6 +4,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -16,8 +17,10 @@ import org.springframework.beans.factory.config.BeanPostProcessor;
 import org.springframework.core.annotation.AnnotatedElementUtils;
 import org.springframework.core.convert.ConversionService;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.Sort.Order;
 import org.springframework.data.dozer.annotation.DozerEntity;
 import org.springframework.data.dozer.annotation.DozerRepository;
 import org.springframework.data.mapping.PersistentEntity;
@@ -35,7 +38,10 @@ import com.github.dozermapper.core.classmap.ClassMap;
 import com.github.dozermapper.core.classmap.ClassMappings;
 import com.github.dozermapper.core.classmap.Configuration;
 import com.github.dozermapper.core.classmap.MappingDirection;
+import com.github.dozermapper.core.config.BeanContainer;
+import com.github.dozermapper.core.fieldmap.FieldMap;
 import com.github.dozermapper.core.metadata.MetadataLookupException;
+import com.github.dozermapper.core.util.MappingUtils;
 import com.google.common.base.Predicates;
 import com.google.common.collect.Iterables;
 
@@ -60,6 +66,8 @@ public class SimpleDozerRepository<T, ID> implements DozerRepositoryImplementati
 	protected boolean useConverterServiceForEntityIdToAdaptedEntityId = false;
 	protected boolean useConverterServiceForAdaptedEntityIdToEntityId = false;
 	protected Method entityIdSetter;
+
+	protected Map<String, String> dozerEntityFieldNameToAdaptedFieldName = new HashMap<String, String>();
 
 	public SimpleDozerRepository(RepositoryInformation repositoryInformation,
 			DozerEntityInformation<T, ?> entityInformation, Mapper dozerMapper, String conversionServiceName,
@@ -181,6 +189,8 @@ public class SimpleDozerRepository<T, ID> implements DozerRepositoryImplementati
 		boolean considerConversionServiceForEntityIdMapping = entityInformation.getMapEntityIdUsingConvertionService()
 				&& conversionService.getOptional().isPresent();
 
+		populateDozerEntityFieldNameToAdaptedFieldNameMap();
+
 		// validate domain model mappings
 		if (!hasDozerMapping(entityInformation.getJavaType(), entityInformation.getAdaptedJavaType(),
 				entityInformation.getDozerMapId())) {
@@ -228,6 +238,72 @@ public class SimpleDozerRepository<T, ID> implements DozerRepositoryImplementati
 		}
 
 		entityIdSetter = entityInformation.getPersistentEntity().getRequiredIdProperty().getRequiredSetter();
+	}
+
+	protected void populateDozerEntityFieldNameToAdaptedFieldNameMap() {
+		ClassMappings classMappings = getClassMappings();
+
+		boolean entityToAdaptedEntity = true;
+
+		ClassMap mapping = StringUtils.isEmpty(entityInformation.getDozerMapId())
+				? classMappings.find(entityInformation.getJavaType(), entityInformation.getAdaptedJavaType())
+				: classMappings.find(entityInformation.getJavaType(), entityInformation.getAdaptedJavaType(),
+						entityInformation.getDozerMapId());
+
+		if (mapping == null) {
+			mapping = StringUtils.isEmpty(entityInformation.getDozerMapId())
+					? classMappings.find(entityInformation.getAdaptedJavaType(), entityInformation.getJavaType())
+					: classMappings.find(entityInformation.getAdaptedJavaType(), entityInformation.getJavaType(),
+							entityInformation.getDozerMapId());
+
+			if (mapping == null || (mapping != null && MappingDirection.ONE_WAY == mapping.getType())) {
+				return;
+			}
+
+			entityToAdaptedEntity = false;
+		}
+
+		Class<?> srcClass = mapping.getSrcClassToMap();
+		Class<?> destClass = mapping.getDestClassToMap();
+
+		BeanContainer beanContainer = getBeanContainer();
+
+		List<Class<?>> superSrcClasses = MappingUtils.getSuperClassesAndInterfaces(srcClass, beanContainer);
+		List<Class<?>> superDestClasses = MappingUtils.getSuperClassesAndInterfaces(destClass, beanContainer);
+
+		// add the actual classes to check for mappings between the original and the
+		// opposite
+		// super classes
+		superSrcClasses.add(0, srcClass);
+		superDestClasses.add(0, destClass);
+
+		for (Class<?> superSrcClass : superSrcClasses) {
+			for (Class<?> superDestClass : superDestClasses) {
+				if (!(superSrcClass.equals(srcClass) && superDestClass.equals(destClass))) {
+					ClassMap superMapping = classMappings.find(superSrcClass, superDestClass,
+							entityInformation.getDozerMapId());
+					if (superMapping != null) {
+						processDozerFieldMapping(entityToAdaptedEntity, superMapping);
+					}
+				}
+			}
+		}
+
+		processDozerFieldMapping(entityToAdaptedEntity, mapping);
+	}
+
+	protected void processDozerFieldMapping(boolean entityToAdaptedEntity, ClassMap mapping) {
+
+		for (FieldMap fieldMap : mapping.getFieldMaps()) {
+			String entityFieldName = entityToAdaptedEntity ? fieldMap.getSrcFieldName() : fieldMap.getDestFieldName();
+			String adaptedEntityFieldName = entityToAdaptedEntity ? fieldMap.getDestFieldName()
+					: fieldMap.getSrcFieldName();
+
+			if (!StringUtils.isEmpty(entityFieldName) && !StringUtils.isEmpty(adaptedEntityFieldName)
+					&& !dozerEntityFieldNameToAdaptedFieldName.containsKey(entityFieldName)) {
+				dozerEntityFieldNameToAdaptedFieldName.put(entityFieldName, adaptedEntityFieldName);
+			}
+		}
 	}
 
 	/**
@@ -280,6 +356,15 @@ public class SimpleDozerRepository<T, ID> implements DozerRepositoryImplementati
 		Configuration globalConfiguration = (Configuration) ReflectionUtils.getField(globalConfigurationField,
 				dozerMapper.getMapperModelContext());
 		return globalConfiguration;
+	}
+
+	protected BeanContainer getBeanContainer() {
+		Field beanContainerField = ReflectionUtils.findField(dozerMapper.getMapperModelContext().getClass(),
+				"beanContainer", BeanContainer.class);
+		ReflectionUtils.makeAccessible(beanContainerField);
+		BeanContainer beanContainer = (BeanContainer) ReflectionUtils.getField(beanContainerField,
+				dozerMapper.getMapperModelContext());
+		return beanContainer;
 	}
 
 	protected ClassMappings getClassMappings() {
@@ -390,7 +475,7 @@ public class SimpleDozerRepository<T, ID> implements DozerRepositoryImplementati
 
 	@Override
 	public Iterable<T> findAll(Sort sort) {
-		Iterable<?> entities = getAdaptedRepository().findAll(sort);
+		Iterable<?> entities = getAdaptedRepository().findAll(toAdaptedSort(sort));
 
 		Iterable<T> resources = Iterables.transform(entities, source -> toDozerEntity(source));
 
@@ -399,7 +484,7 @@ public class SimpleDozerRepository<T, ID> implements DozerRepositoryImplementati
 
 	@Override
 	public Page<T> findAll(Pageable pageable) {
-		Page<?> entities = getAdaptedRepository().findAll(pageable);
+		Page<?> entities = getAdaptedRepository().findAll(toAdaptedPageable(pageable));
 
 		Page<T> resources = entities.map(source -> toDozerEntity(source));
 
@@ -542,6 +627,32 @@ public class SimpleDozerRepository<T, ID> implements DozerRepositoryImplementati
 	@Override
 	public void deleteAll() {
 		getAdaptedRepository().deleteAll();
+	}
+
+	protected Sort toAdaptedSort(Sort sort) {
+		if (sort.isSorted() && dozerEntityFieldNameToAdaptedFieldName != null) {
+			sort = Sort.by(sort.toList().stream().map(it -> toAdaptedOrder(it)).collect(Collectors.toList()));
+		}
+
+		return sort;
+	}
+
+	protected Order toAdaptedOrder(Order order) {
+		if (dozerEntityFieldNameToAdaptedFieldName != null) {
+			return order.withProperty(
+					dozerEntityFieldNameToAdaptedFieldName.getOrDefault(order.getProperty(), order.getProperty()));
+		}
+
+		return order;
+	}
+
+	protected Pageable toAdaptedPageable(Pageable pageable) {
+		if (pageable.getSort().isSorted() && dozerEntityFieldNameToAdaptedFieldName != null) {
+			pageable = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(),
+					toAdaptedSort(pageable.getSort()));
+		}
+
+		return pageable;
 	}
 
 }
