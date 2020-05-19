@@ -7,15 +7,14 @@ import java.util.Collections;
 import java.util.Locale;
 import java.util.Optional;
 
-import org.springframework.beans.factory.support.AbstractBeanDefinition;
 import org.springframework.beans.factory.support.BeanDefinitionBuilder;
-import org.springframework.beans.factory.support.BeanDefinitionReaderUtils;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import org.springframework.beans.factory.support.RootBeanDefinition;
 import org.springframework.data.dozer.annotation.DozerEntity;
 import org.springframework.data.dozer.repository.DozerRepository;
 import org.springframework.data.dozer.repository.support.DozerEvaluationContextExtension;
 import org.springframework.data.dozer.repository.support.DozerRepositoryFactoryBean;
+import org.springframework.data.dozer.repository.support.DozerUtil;
 import org.springframework.data.dozer.repository.support.Repositories;
 import org.springframework.data.repository.config.AnnotationRepositoryConfigurationSource;
 import org.springframework.data.repository.config.RepositoryConfigurationExtensionSupport;
