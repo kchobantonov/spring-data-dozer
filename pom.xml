@@ -37,10 +37,10 @@
 	</properties>
 
 	<scm>
-		<connection>scm:git:git://github.com/kchobantonov/spring-data-dozer.git</connection>
-		<developerConnection>scm:git:git@github.com/kchobantonov/spring-data-dozer.git</developerConnection>
+		<connection>scm:git:https://github.com/kchobantonov/spring-data-dozer.git</connection>
+		<developerConnection>scm:git:https://github.com/kchobantonov/spring-data-dozer.git</developerConnection>
 		<url>https://github.com/kchobantonov/spring-data-dozer.git</url>
-		<tag>spring-data-dozer-1.0.0</tag>
+		<tag>HEAD</tag>
 	</scm>
 
 	<issueManagement>
