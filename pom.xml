@@ -52,7 +52,7 @@
 		<repository>
 			<id>bintray-kchobantonov-maven</id>
 			<name>kchobantonov-maven</name>
-			<url>https://api.bintray.com/maven/kchobantonov/maven/;publish=1</url>
+			<url>https://api.bintray.com/maven/kchobantonov/maven/spring-data-dozer;publish=1</url>
 		</repository>
 	</distributionManagement>
 
