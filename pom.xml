@@ -3,7 +3,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>org.springframework.data</groupId>
 	<artifactId>spring-data-dozer</artifactId>
-	<version>1.0.0</version>
+	<version>1.0.1-SNAPSHOT</version>
 
 	<name>Spring Data Dozer</name>
 	<description>Spring Data integration for Dozer</description>
@@ -40,7 +40,7 @@
 		<connection>scm:git:https://github.com/kchobantonov/spring-data-dozer.git</connection>
 		<developerConnection>scm:git:https://github.com/kchobantonov/spring-data-dozer.git</developerConnection>
 		<url>https://github.com/kchobantonov/spring-data-dozer.git</url>
-		<tag>spring-data-dozer-1.0.0</tag>
+		<tag>HEAD</tag>
 	</scm>
 
 	<issueManagement>
