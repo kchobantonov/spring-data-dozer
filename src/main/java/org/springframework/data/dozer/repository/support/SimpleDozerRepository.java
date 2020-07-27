@@ -465,6 +465,10 @@ public class SimpleDozerRepository<T, ID> implements DozerRepositoryImplementati
 
 	@Override
 	public void delete(T resource) {
+		if (entityInformation.isNew(resource)) {
+			return;
+		}
+		
 		Object entityId = toAdaptedId((ID) entityInformation.getId(resource));
 
 		getAdaptedRepository().deleteById(entityId);
