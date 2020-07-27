@@ -15,6 +15,7 @@ import org.springframework.beans.factory.ListableBeanFactory;
 import org.springframework.beans.factory.config.BeanPostProcessor;
 import org.springframework.core.annotation.AnnotatedElementUtils;
 import org.springframework.core.convert.ConversionService;
+import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -38,6 +39,8 @@ import com.google.common.base.Predicates;
 import com.google.common.collect.Iterables;
 
 public class SimpleDozerRepository<T, ID> implements DozerRepositoryImplementation<T, ID>, BeanPostProcessor {
+	private static final String ID_MUST_NOT_BE_NULL = "The given id must not be null!";
+
 	protected final RepositoryInformation repositoryInformation;
 	protected final DozerEntityInformation<T, ?> entityInformation;
 	protected PersistentEntity<?, ?> adaptedPersistentEntity;
@@ -454,34 +457,26 @@ public class SimpleDozerRepository<T, ID> implements DozerRepositoryImplementati
 
 	@Override
 	public void deleteById(ID resourceId) {
-		if (resourceId != null) {
-			Object entityId;
-			try {
-				entityId = toAdaptedId(resourceId);
-			} catch (MappingException e) {
-				return;
-			}
+		Assert.notNull(resourceId, ID_MUST_NOT_BE_NULL);
 
-			if (entityId != null) {
-				getAdaptedRepository().deleteById(entityId);
-			}
-		}
+		delete(findById(resourceId).orElseThrow(() -> new EmptyResultDataAccessException(
+				String.format("No %s entity with id %s exists!", entityInformation.getJavaType(), resourceId), 1)));
 	}
 
 	@Override
 	public void delete(T resource) {
-		deleteById((ID) entityInformation.getId(resource));
+		Object entityId = dozerMapper.map(entityInformation.getId(resource),
+				getAdaptedRepositoryInformation().getIdType());
+
+		getAdaptedRepository().deleteById(entityId);
 	}
 
 	@Override
 	public void deleteAll(Iterable<? extends T> resources) {
-		Iterable<Object> entityIds = Iterables.transform(resources, source -> dozerMapper
-				.map(entityInformation.getId(source), getAdaptedRepositoryInformation().getIdType()));
+		Assert.notNull(resources, "Entities must not be null!");
 
-		for (Object entityId : entityIds) {
-			if (entityId != null) {
-				getAdaptedRepository().deleteById(entityId);
-			}
+		for (T entity : resources) {
+			delete(entity);
 		}
 	}
 
