@@ -465,8 +465,7 @@ public class SimpleDozerRepository<T, ID> implements DozerRepositoryImplementati
 
 	@Override
 	public void delete(T resource) {
-		Object entityId = dozerMapper.map(entityInformation.getId(resource),
-				getAdaptedRepositoryInformation().getIdType());
+		Object entityId = toAdaptedId((ID) entityInformation.getId(resource));
 
 		getAdaptedRepository().deleteById(entityId);
 	}
@@ -482,7 +481,9 @@ public class SimpleDozerRepository<T, ID> implements DozerRepositoryImplementati
 
 	@Override
 	public void deleteAll() {
-		getAdaptedRepository().deleteAll();
+		for (T element : findAll()) {
+			delete(element);
+		}
 	}
 
 	protected Sort toAdaptedSort(Sort sort) {
